@@ -1,0 +1,13 @@
+.review {
+  display: flex;
+  margin-bottom: 16px;
+  border: 1px solid black;
+  align-items: center;
+  .review-text {
+    flex: 9;
+  }
+  .review-rating {
+    text-align: center;
+    flex: 1;
+  }
+}
