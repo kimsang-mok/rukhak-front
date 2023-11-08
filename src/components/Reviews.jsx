@@ -1,64 +1,110 @@
-import { useEffect, useState } from "react";
-import axios from "./../utils/api";
+import { useState, useRef, useCallback } from "react";
+import useLoadReviews from "./useLoadReviews";
 import { useParams } from "react-router-dom";
 
 function Reviews() {
-  const [reviews, setReviews] = useState([]);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
   const { productId } = useParams();
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop !==
-          document.documentElement.offsetHeight ||
-        !hasMore
-      )
-        return;
-      setPage((prevPage) => prevPage + 1);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore]);
-
+  const { reviews, loading, hasMore } = useLoadReviews(productId, page);
+  const observer = useRef();
   console.log(page);
-
-  useEffect(() => {
-    // Function to load data
-    const loadReviews = async () => {
-      setLoading(true);
-      const response = await axios.get(
-        `/api/v1/reviews/${productId}?page=${page}`
+  const lastReviewRef = useCallback(
+    (node) => {
+      if (loading) return;
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasMore) {
+            setPage((prevPage) => prevPage + 1);
+          }
+        },
+        {
+          rootMargin: "100px",
+        }
       );
-      console.log(response.data);
-      setReviews((prevReviews) => [...prevReviews, ...response.data]);
-      setHasMore(response.data.length === 10);
-      setLoading(false);
-    };
-
-    if (hasMore && !loading) {
-      loadReviews();
-    }
-  }, [page, hasMore]);
-  console.log(count);
+      if (node) observer.current.observe(node);
+    },
+    [loading, hasMore]
+  );
 
   return (
     <>
       <h2>Reviews</h2>
-      <div>
-        {reviews?.map((revw, index) => (
-          <div className="review" key={index}>
-            <h3>{index}</h3>
-            <p className="review-text">{revw.review}</p>
-            <p className="review-rating">{revw.rating}</p>
-          </div>
-        ))}
-      </div>
+      {reviews?.map((revw, index) => (
+        <div
+          className="review"
+          key={index}
+          ref={index === reviews.length - 1 ? lastReviewRef : null}
+        >
+          <h3 className="review-index">{index}</h3>
+          <p className="review-text">{revw.review}</p>
+          <p className="review-rating">{revw.rating}</p>
+        </div>
+      ))}
+
+      <div>{loading ? "Loading..." : null}</div>
     </>
   );
 }
 
 export default Reviews;
+
+{
+  /*<div>
+        {reviews?.map((revw, index) => {
+          if (index === reviews.length - 1) {
+            return (
+              <div className="review" key={index} ref={lastReviewRef}>
+                <h3 className="review-index">{index}</h3>
+                <p className="review-text">{revw.review}</p>
+                <p className="review-rating">{revw.rating}</p>
+              </div>
+            );
+          } else {
+            return (
+              <div className="review" key={index}>
+                <h3 className="review-index">{index}</h3>
+                <p className="review-text">{revw.review}</p>
+                <p className="review-rating">{revw.rating}</p>
+              </div>
+            );
+          }
+        })}
+      </div>*/
+}
+
+// useEffect(() => {
+//   const handleScroll = debounce(() => {
+//     if (
+//       window.innerHeight + document.documentElement.scrollTop !==
+//         document.documentElement.offsetHeight ||
+//       !hasMore
+//     ) {
+//       return;
+//     }
+
+//     setPage((prevPage) => prevPage + 1);
+//   }, 500); // delay 0.5s
+
+//   window.addEventListener("scroll", handleScroll);
+//   return () => window.removeEventListener("scroll", handleScroll);
+// }, [hasMore]);
+
+/*
+  useEffect(() => {
+    const handleScroll = debounce(() => {
+      if (
+        lastReviewRef.current &&
+        window.innerHeight + document.documentElement.scrollTop >=
+          lastReviewRef.current.offsetTop
+      ) {
+        if (hasMore && !loading) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      }
+    }, 100); // 0.5s delay
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loading, lastReviewRef]);
+*/
